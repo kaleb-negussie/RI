@@ -1,0 +1,372 @@
+---
+title: "Data Transformation and R² of RI Phenotypes (Skin)"
+subtitle: 'Report 2'
+author: 'Kaleb Negussie' 
+output: 
+  html_document:
+      code_folding: show
+date: '2022-06-15'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load-packages, include=FALSE}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+library(ggthemes)
+library(knitr)
+```
+
+### **Log₁₀ Transformation**:
+
+```{r Produce Electrolyte Histograms, message=FALSE, warning=FALSE}
+df <- read.csv('/Users/kalebnegussie/Desktop/RI data/Full_skin_data.csv')
+
+#Renames Czech diet names 
+df$Diet <- gsub('Voda','Water',df$Diet)
+df$Diet <- gsub('Sůl','Salt',df$Diet)
+
+#Finds log of electrolyte concentrations and adds columns to df 
+ flog <- function(x) {log10(x)}
+ df <- df %>% mutate(logK = flog(K...mg.kg. ),
+                    logCl = flog(Cl...mg.kg.),
+                    logNa = flog(Na...mg.kg.))
+#Builds a data frame for each electrolyte with missing values dropped 
+Na.df <- 
+  df %>% 
+  select(Strain, Diet, Na...mg.kg., logNa) %>% 
+  drop_na(Na...mg.kg., logNa)
+
+K.df <- 
+  df %>% 
+  select(Strain, Diet, K...mg.kg., logK) %>% 
+  drop_na(K...mg.kg., logK)
+
+Cl.df <- 
+  df %>% 
+  select(Strain, Diet, Cl...mg.kg., logCl) %>% 
+  drop_na(Cl...mg.kg., logCl)
+
+#Na Histogram
+  Na.dis <- Na.df %>% ggplot(aes(Na...mg.kg.)) + 
+  labs(title = 'Na concentration
+       ',
+       x= '[Na](mg/Kg)',
+       y = 'Frequency')+
+   stat_bin(bins = 50, fill = '#E69F00', color = '#cc8c02')+
+   ylim(0, 25) + 
+   theme_fivethirtyeight()+
+   theme(axis.title = element_text(),
+         plot.title = element_text(hjust = 0.2))
+#Cl Histogram
+ Cl.dis <- Cl.df %>% ggplot(aes(Cl...mg.kg.)) + 
+   labs(title = 'Cl concentration',
+        x= '[Cl](mg/Kg)',
+        y = 'Frequency')+
+   stat_bin(bins = 50, fill = '#3776db', color = '#2c62b8')+
+   ylim(0, 25) + 
+   theme_fivethirtyeight()+
+   theme(axis.title = element_text(),
+         plot.title = element_text(hjust = 0.2))
+
+ #K Histogram
+    K.dis <- K.df %>% ggplot(aes(x = K...mg.kg.))+ 
+      labs(title = 'K concentration',
+           x= '[K](mg/Kg)',
+           y = 'Frequency')+
+    stat_bin(bins = 50, fill = "#66cc41", color = "#51a133")+
+    ylim(0, 25) + 
+    theme_fivethirtyeight()+
+      theme(axis.title = element_text(),
+            plot.title = element_text(hjust = 0.2))
+   
+#Log of K concentration Hist
+ logK.hist <- K.df %>% ggplot(aes(x = logK))+ 
+   stat_bin(bins = 50, fill = "#66cc41", color = "#51a133")+
+   ylim(0, 25) + 
+   labs(title = 'Log₁₀ of K 
+        concentration',
+        x= 'log₁₀[K](mg/Kg)',
+        y = 'Frequency')+
+   theme_fivethirtyeight()+
+   theme(axis.title = element_text(),
+     plot.title = element_text(hjust = 0.2))
+
+#Log of Cl concentration Hist
+ logCl.hist <- Cl.df %>% ggplot(aes(x = logCl))+ 
+   stat_bin(bins = 50, fill = "#3776db", color = "#2c62b8")+
+   ylim(0, 25) + 
+   labs(title = 'Log₁₀ of Cl 
+concentration',
+        x= 'log₁₀[Cl](mg/Kg)',
+        y = 'Frequency')+
+   theme_fivethirtyeight()+
+   theme(axis.title = element_text(),
+         plot.title = element_text(hjust = 0.2))
+ 
+ #Log of Na concentration Hist
+ logNa.hist <- Na.df %>% ggplot(aes(x = logNa))+ 
+   stat_bin(bins = 50, fill = "#E69F00", color = "#cc8c02")+
+   ylim(0, 25) + 
+   labs(title = '  Log of Na
+concentration',
+        x= 'log₁₀[Na](mg/Kg)',
+        y = 'Frequency')+
+   theme_fivethirtyeight()+
+   theme(axis.title = element_text(),
+         plot.title = element_text(hjust = 0.2))
+ 
+plot_grid( Na.dis, logNa.hist,
+            ncol = 2, nrow = 1)
+plot_grid( Cl.dis, logCl.hist,
+            ncol = 2, nrow = 1)
+plot_grid( K.dis, logK.hist,
+            ncol = 2, nrow = 1)
+
+```
+
+### **Phenotype R² Values by Strain**:
+
+```{r Electrolyte R², message=FALSE, warning=FALSE}
+
+#One Way Anova 
+
+#Creates 2 data frames with each respective diet 
+df.salt <- filter(df, Diet == 'Salt')
+df.water <- filter(df, Diet == 'Water')
+
+#Function that takes in df and col and outputs r.squared grouped by Strain
+find.rsqu <- function(Data, Column) {
+  (summary(lm(Column ~ Strain, data = Data)))$r.squared} 
+
+#Rsquared K Water 
+K.W.rsqu <- find.rsqu(df.water, df.water$logK)
+#Rsquared Na Water 
+Na.W.rsqu <- find.rsqu(df.water, df.water$logNa)
+#Rsquared Cl Water 
+Cl.W.rsqu <- find.rsqu(df.water, df.water$logCl)
+#Rsquared K Salt 
+K.S.rsqu <- find.rsqu(df.salt, df.salt$logK)
+#Rsquared Na Water 
+Na.S.rsqu <-find.rsqu(df.salt, df.salt$logNa)
+#Rsquared Cl Water 
+Cl.S.rsqu <-find.rsqu(df.salt, df.salt$logCl)
+
+```
+
+***Electrolyte R² Values by Strain:***
+
+| Electrolyte |     Salt      |         Water |
+|-------------|:-------------:|--------------:|
+| **Na⁺**     | `r Na.S.rsqu` | `r Na.W.rsqu` |
+| **Cl⁻**     | `r Cl.S.rsqu` | `r Cl.W.rsqu` |
+| **K⁺**      | `r K.S.rsqu`  |  `r K.W.rsqu` |
+
+```{r Skin:body ratio R², message=FALSE, warning=FALSE, include=FALSE}
+#Adds a column to df with skin to body ratio 
+df <- df %>% mutate(sb.ratio = (Body.Weight..g. / Skin.Dry.Weight..g. ))
+sb <- data.frame(Strain = df$Strain, Diet= df$Diet, sb.ratio = df$sb.ratio)
+#Builds 2 data frames separating sb by diet
+sb.water<- filter(sb, Diet == 'Water')
+sb.salt<- filter(sb, Diet == 'Salt')
+round
+sb.W.rsqu<- find.rsqu(sb.water, sb.water$sb.ratio)
+sb.S.rsqu <- find.rsqu(sb.salt, sb.salt$sb.ratio)
+```
+
+***Skin to Body Weight Ratios by Strain:***\
+Salt Diet R²: **`r round(sb.S.rsqu, 3)`**\
+Water Diet R²: **`r round(sb.W.rsqu,3)`**
+
+### **Electrolyte Concentration Means by Strain:**
+
+```{r }
+Na.ed <- Na.df %>% group_by(Diet , Strain) %>%  summarize('Na_mg.kg'= mean(Na...mg.kg.))
+Na.ed<- Na.ed[order(Na.ed$Na_mg.kg),]
+
+
+K.ed <- K.df %>% group_by( Strain, Diet) %>%  summarize('K_mg.kg'= mean(K...mg.kg.))
+K.ed<- K.ed[order(K.ed$K_mg.kg),]
+
+
+Cl.ed <- Cl.df %>% group_by(Strain, Diet) %>%  summarize('Cl_mg.kg'= mean(Cl...mg.kg.))
+
+Cl.ed<- Cl.ed[order(Cl.ed$Cl_mg.kg),]
+
+
+Na_bar <- Na.ed %>% ggplot(aes(x = Strain, y = Na_mg.kg, fill = Diet)) +
+  geom_bar(stat = 'identity', position = position_dodge()) +
+  theme_fivethirtyeight()+
+  theme(axis.title = element_text(),
+        plot.title = element_text(hjust = 0.2))+ 
+  scale_fill_manual(values=c('#E69F00','#999999'))+
+  ylab('Na CONC(mg/Kg)')+
+  ggtitle('Mean Na concentration by Strain')+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+Cl_bar <- Cl.ed %>% ggplot(aes(x = Strain, y = Cl_mg.kg, fill = Diet)) +
+  geom_bar(stat = 'identity', position = position_dodge()) +
+  theme_fivethirtyeight()+
+  theme(axis.title = element_text(),
+        plot.title = element_text(hjust = 0.2))+ 
+  scale_fill_manual(values=c('#3776db','#999999'))+
+  ylab('Cl CONC(mg/Kg)')+
+  ggtitle('Mean Cl concentration by Strain')+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+
+K_bar <- K.ed %>% ggplot(aes(x = Strain, y = K_mg.kg, fill = Diet)) +
+  geom_bar(stat = 'identity', position = position_dodge()) +
+  theme_fivethirtyeight()+
+  theme(axis.title = element_text(),
+        plot.title = element_text(hjust = 0.2))+ 
+  scale_fill_manual(values=c('#66cc41','#999999'))+
+  ylab('K CONC(mg/Kg)')+
+  ggtitle('Mean K concentration by Strain')+
+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+Na_bar
+Cl_bar
+K_bar
+```
+
+### **Electrolyte Concentrations Relative to Mean:**
+
+```{r}
+
+#Builds 2 data frames sorted by diet with added electrolyte conc - average columns 
+Na.S.ed <- filter(Na.ed, Diet == 'Salt')
+K.S.ed <- filter(K.ed, Diet == 'Salt')
+Cl.S.ed <- filter(Cl.ed, Diet == 'Salt')
+
+Na.S.ed <- Na.S.ed %>% mutate(Na_from_mean = Na_mg.kg - mean(Na.S.ed$Na_mg.kg))
+K.S.ed <-  K.S.ed %>% mutate(K_from_mean = K_mg.kg - mean(K.S.ed$K_mg.kg))
+Cl.S.ed <-  Cl.S.ed %>% mutate(Cl_from_mean = Cl_mg.kg - mean(Cl.S.ed$Cl_mg.kg))                 
+Na.W.ed <- filter(Na.ed, Diet == 'Water')
+K.W.ed <- filter(K.ed, Diet == 'Water')
+Cl.W.ed <- filter(Cl.ed, Diet == 'Water')
+
+Na.W.ed <- Na.W.ed %>% mutate(Na_from_mean = Na_mg.kg - mean(Na.W.ed$Na_mg.kg))
+K.W.ed <-  K.W.ed %>% mutate(K_from_mean = K_mg.kg - mean(K.W.ed$K_mg.kg))
+Cl.W.ed <-  Cl.W.ed %>% mutate(Cl_from_mean = Cl_mg.kg - mean(Cl.W.ed$Cl_mg.kg))
+
+#Building a data frame sorted by each electrolyte's difference from  mean conc 
+#and adds a column  based on if the value is above or below the mean 
+
+#Na Salt and Water bar graphs 
+Na.S <- Na.S.ed
+Na.S$Na_type <- ifelse(Na.S$Na_from_mean < 0, "below", "above")
+Na.S <- Na.S[order(Na.S$Na_from_mean),]
+Na.S$Strain <- factor(Na.S$Strain, levels = Na.S$Strain)
+Na.S_bar <- Na.S %>% ggplot(aes(x = Na_from_mean, y = Strain))+
+  geom_bar(stat = 'identity', aes(fill=Na_type), width=.5)+
+  scale_fill_manual(name="Na Conc", 
+                    labels = c("Above Average", "Below Average"), 
+                    values = c("above"="#E69F00", "below"="#f8766d")) + 
+  theme_fivethirtyeight()+
+  theme(axis.title = element_text(),
+        plot.title = element_text(hjust = 0.2))+ 
+  ylab('Strain')+
+  xlab('[Na](mg/Kg) difference from mean')+
+  ggtitle('Na Concentraiton Relative to Mean by Strain
+                     (Salt Diet)')
+Na.S_bar
+
+Na.W <- Na.W.ed
+Na.W$Na_type <- ifelse(Na.W$Na_from_mean < 0, "below", "above")
+Na.W <- Na.W[order(Na.W$Na_from_mean),]
+Na.W$Strain <- factor(Na.W$Strain, levels = Na.W$Strain)
+Na.W_bar <- Na.W %>% ggplot(aes(x = Na_from_mean, y = Strain))+
+  geom_bar(stat = 'identity', aes(fill=Na_type), width=.5) +
+  scale_fill_manual(name="Na Conc", 
+                    labels = c("Above Average", "Below Average"), 
+                    values = c("above"="#E69F00", "below"="#f8766d")) + 
+  theme_fivethirtyeight()+
+  theme(axis.title = element_text(),
+        plot.title = element_text(hjust = 0.2))+ 
+  ylab('Strain')+
+  xlab('[Na](mg/Kg) difference from mean')+
+  ggtitle('Na Concentraiton Relative to Mean by Strain
+                     (Water Diet)')
+Na.W_bar
+
+#Cl Salt and Water bar graphs 
+Cl.S <- Cl.S.ed
+Cl.S$Cl_type <- ifelse(Cl.S$Cl_from_mean < 0, "below", "above")
+Cl.S <- Cl.S[order(Cl.S$Cl_from_mean),]
+Cl.S$Strain <- factor(Cl.S$Strain, levels = Cl.S$Strain)
+Cl.S_bar <- Cl.S %>% ggplot(aes(x = Cl_from_mean, y = Strain))+
+  geom_bar(stat = 'identity', aes(fill=Cl_type), width=.5) +
+  scale_fill_manual(name="Cl Conc", 
+                    labels = c("Above Average", "Below Average"), 
+                    values = c("above"="#3776db", "below"="#f8766d")) + 
+  theme_fivethirtyeight()+
+  theme(axis.title = element_text(),
+        plot.title = element_text(hjust = 0.2))+ 
+  ylab('Strain')+
+  xlab('[Cl](mg/Kg) difference from mean')+
+  ggtitle('Cl Concentraiton Relative to Mean by Strain
+                     (Salt Diet)')
+Cl.S_bar
+
+Cl.W <- Cl.W.ed
+Cl.W$Cl_type <- ifelse(Cl.W$Cl_from_mean < 0, "below", "above")
+Cl.W <- Cl.W[order(Cl.W$Cl_from_mean),]
+Cl.W$Strain <- factor(Cl.W$Strain, levels = Cl.W$Strain)
+Cl.W_bar <- Cl.W %>% ggplot(aes(x = Cl_from_mean, y = Strain))+
+  geom_bar(stat = 'identity', aes(fill=Cl_type), width=.5) +
+  scale_fill_manual(name="Cl Conc", 
+                    labels = c("Above Average", "Below Average"), 
+                    values = c("above"="#3776db", "below"="#f8766d")) + 
+  theme_fivethirtyeight()+
+  theme(axis.title = element_text(),
+        plot.title = element_text(hjust = 0.2))+ 
+  ylab('Strain')+
+  xlab('[Cl](mg/Kg) difference from mean')+
+  ggtitle('Cl Concentraiton Relative to Mean by Strain
+                     (Water Diet)')
+Cl.W_bar
+
+K.S <- K.S.ed
+K.S$K_type <- ifelse(K.S$K_from_mean < 0, "below", "above")
+K.S <- K.S[order(K.S$K_from_mean),]
+K.S$Strain <- factor(K.S$Strain, levels = K.S$Strain)
+K.S_bar <- K.S %>% ggplot(aes(x = K_from_mean, y = Strain))+
+  geom_bar(stat = 'identity', aes(fill=K_type), width=.5) +
+  scale_fill_manual(name="K Conc", 
+                    labels = c("Above Average", "Below Average"), 
+                    values = c("above"="#66cc41", "below"="#f8766d")) + 
+  theme_fivethirtyeight()+
+  theme(axis.title = element_text(),
+        plot.title = element_text(hjust = 0.2))+ 
+  ylab('Strain')+
+  xlab('[K](mg/Kg) difference from mean')+
+  ggtitle('K concentration Relative to Mean by Strain
+                     (Salt Diet)')
+K.S_bar
+
+K.W <- K.W.ed
+K.W$K_type <- ifelse(K.W$K_from_mean < 0, "below", "above")
+K.W <- K.W[order(K.W$K_from_mean),]
+K.W$Strain <- factor(K.W$Strain, levels = K.W$Strain)
+K.W_bar <- K.W %>% ggplot(aes(x = K_from_mean, y = Strain))+
+  geom_bar(stat = 'identity', aes(fill=K_type), width=.5) +
+  scale_fill_manual(name="K Conc", 
+                    labels = c("Above Average", "Below Average"), 
+                    values = c("above"="#66cc41", "below"="#f8766d")) + 
+  theme_fivethirtyeight()+
+  theme(axis.title = element_text(),
+        plot.title = element_text(hjust = 0.2))+ 
+  ylab('Strain')+
+  xlab('[K](mg/Kg) difference from mean')+
+  ggtitle('K concentration Relative to Mean by Strain
+                     (Water Diet)')
+K.W_bar
+
+```

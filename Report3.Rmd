@@ -1,0 +1,147 @@
+---
+title: "QTL analysis plots and phenotype correlations "
+subtitle: 'Report 3'
+author: 'Kaleb Negussie' 
+output: 
+  html_document:
+      code_folding: show
+date: '2022-06-15'
+---
+
+```{r load-packages, include=FALSE}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+library(ggthemes)
+library(knitr)
+library(qtl)
+```
+
+```{r, message=FALSE, warning=FALSE}
+df <- read.csv('/Users/kalebnegussie/Desktop/RI data/Full_skin_data.csv')
+
+k.out <- boxplot.stats(df$K...mg.kg.)$out
+cl.out <- boxplot.stats(df$Cl...mg.kg.)$out
+na.out <- boxplot.stats(df$Na...mg.kg.)$out
+
+
+boxplot(df$K...mg.kg.,
+        ylab = '[K] mg/kg',
+        main = 'Boxplot of K concentration
+        ')
+mtext(paste('Outliers:', paste(k.out, collapse = ',')))
+
+boxplot(df$Cl...mg.kg.,
+        ylab = '[Cl] mg/kg',
+        main = 'Boxplot of Cl concentration
+        ')
+mtext(paste('Outliers:', paste(cl.out, collapse = ',')))
+
+boxplot(df$Na...mg.kg.,
+        ylab = '[K] mg/kg',
+        main = 'Boxplot of K concentration
+        ')
+mtext(paste('Outliers:', paste(na.out, collapse = ',')))
+
+df <- df[-c(55),]
+      
+```
+
+**A rat in the BXH8 strain was a common outlier for all three strains thus causing its removal from the dataset**
+
+```{r, message=FALSE, warning=FALSE}
+#Na vs Cl plot
+df %>% ggplot(aes(Na...mg.kg., Cl...mg.kg.))+ 
+      geom_point(aes(col = Strain))+
+      ylab('[Cl] mg/kg')+
+      xlab('[Na] mg/kg')+
+      ggtitle('Na vs Cl concentration')+
+     geom_smooth(method = lm)
+df2 <- drop_na(df)
+NaCl <- cor(df2$Na...mg.kg., df2$Cl...mg.kg.)
+```
+
+**Na-Cl Correlation: *`r round(NaCl, digits = 2)`***
+
+```{r, message=FALSE, warning=FALSE}
+#Na vs K plot
+df %>% ggplot(aes(Na...mg.kg., K...mg.kg.))+ 
+      geom_point(aes(col = Strain))+
+      ylab('[K] mg/kg')+
+      xlab('[Na] mg/kg')+
+      ggtitle('Na vs K concentration')+
+     geom_smooth(method = lm)
+NaK <- cor(df2$Na...mg.kg., df2$K...mg.kg.)
+
+```
+
+**Na-K Correlation: *`r round(NaK, digits = 2)`***
+
+```{r, message=FALSE, warning=FALSE}
+#Cl vs K plot
+df %>% ggplot(aes(Cl...mg.kg., K...mg.kg.))+ 
+      geom_point(aes(col = Strain))+
+      ylab('[K] mg/kg')+
+      xlab('[Cl] mg/kg')+
+      ggtitle('Cl vs K concentration') +
+     geom_smooth(method = lm)
+ClK <- cor(df2$Cl...mg.kg., df2$K...mg.kg.)
+```
+
+**Cl-K Correlation: *`r round(ClK, digits = 2)`***
+
+```{r, message=FALSE, warning=FALSE}
+library(qtl)
+#Load in pheno/genotype data
+df_og <- read.cross("csvr", ".", "gen.csv", na.strings = 'NA')
+df_og <- calc.genoprob(df_og, step=1, error.prob=0.01)
+
+K_salt <- scanone(df_og, pheno.col = 1, model = 'normal', method="em")
+Cl_salt <- scanone(df_og, pheno.col = 2, model = 'normal', method="em")
+Na_salt <- scanone(df_og, pheno.col = 3, model = 'normal', method="em")
+SB_salt <- scanone(df_og, pheno.col = 4, model = 'normal', method="em")
+K_water <- scanone(df_og, pheno.col = 5, model = 'normal', method="em")
+Cl_water <- scanone(df_og, pheno.col = 6, model = 'normal', method="em")
+Na_water <- scanone(df_og, pheno.col = 7, model = 'normal', method="em")
+SB_water <- scanone(df_og, pheno.col = 8, model = 'normal', method="em")
+
+scanone(hyper, method="hk", n.perm=1000)
+
+KW.LOD <- plot(K_water, main = 'Mainscan plot of [K⁺] (Water)')
+
+
+KS.LOD <- plot(K_salt, main = 'Mainscan plot of [K⁺] (Salt)')
+
+
+ClW.LOD <- plot(Cl_water, main = 'Mainscan plot of [Cl⁻] (Water)')
+
+
+ClS.LOD <-plot(Cl_salt, main = 'Mainscan plot of [Cl⁻] (Salt)')
+
+
+NaW.LOD <-plot(Na_water, main = 'Mainscan plot of [Na⁺] (Water)')
+
+
+
+NaS.LOD <-plot(Na_salt, main = 'Mainscan plot of [Na⁺] (Salt)')
+
+
+SBW.LOD <-plot(SB_water, main = 'Mainscan plot of Skin:Body ratio (Water)')
+
+
+
+SBS.LOD <-plot(SB_salt, main = 'Mainscan plot of Skin:Body ratio (Salt)')
+
+
+
+ClW.LOD
+ClS.LOD
+NaW.LOD
+NaS.LOD
+SBS.LOD
+SBW.LOD
+
+```
+
+

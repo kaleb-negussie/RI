@@ -1,0 +1,140 @@
+---
+title: "Possible QTL identification and bayesian significant intervals "
+subtitle: 'Report 4'
+author: 'Kaleb Negussie' 
+output: 
+  html_document:
+      code_folding: show
+date: '2022-06-30'
+---
+
+```{r load-packages, include=FALSE}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+library(ggthemes)
+library(knitr)
+library(qtl)
+```
+
+```{r Skin:Body Ratio Log Transformations}
+dfo <- read.csv('/Users/kalebnegussie/Desktop/RI data/Full_skin_data.csv')
+#build skin body ratio df 
+dfo <- dfo %>% mutate(sb.ratio = (Body.Weight..g. / Skin.Dry.Weight..g. ))
+sb <- data.frame(Strain = dfo$Strain, Diet= dfo$Diet, sb.ratio = dfo$sb.ratio)
+sb.water<- filter(sb, Diet == 'Voda')
+sb.salt<- filter(sb, Diet == 'Sůl')
+#Pre transformation histograms 
+hist(sb.water$sb.ratio, main = 'Skin to Body ratios (Salt)', xlab = 'SB ratios') 
+
+hist(sb.salt$sb.ratio, main = 'Skin to Body ratios (Water)',
+     xlab = 'SB ratios') 
+
+#Log base 10 transformations of SB ratios  
+hist(log(sb.salt$sb.ratio), main = 'Log Base 10 of Skin to Body ratios (Salt)',
+     xlab = 'Log SB ratios')
+
+hist(log(sb.water$sb.ratio), main = 'Log Base 10 of Skin to Body ratios (Water)', 
+     xlab = 'Log SB ratios')
+
+```
+
+```{r message=FALSE, warning=FALSE}
+df <- read.cross("csvr", ".", "gen.csv", na.strings = 'NA')
+df <- calc.genoprob(df, step=1, error.prob=0.01)
+#build scan 1s of each phenotyoe 
+df <- sim.geno(df, step=1, n.draws=64)
+ClS.out<-scanone(df, pheno.col = "Cl_Salt",model = 'normal',method="mr")
+
+KS.out<-scanone(df, pheno.col = "K_Salt",model = 'normal',method="imp")
+
+NaS.out<-scanone(df, pheno.col = "Na_Salt",model = 'normal', method="imp")
+
+SBS.out<-scanone(df, pheno.col = "SB_Salt",model = 'normal', method="imp")
+
+KW.out<-scanone(df, pheno.col = "K_Water",model = 'normal', method="imp")
+
+ClW.out<-scanone(df,pheno.col = "Cl_Water",model = 'normal', method="imp")
+
+NaW.out<-scanone(df,pheno.col = "Na_Water",model = 'normal', method="imp")
+
+SBW.out <- scanone(df,pheno.col = "SB_Water",model = 'normal', method="imp")
+
+plot(ClS.out)
+plot(ClW.out)
+plot(KS.out)
+plot(KW.out)
+plot(NaS.out)
+plot(NaW.out)
+plot(SBS.out)
+plot(SBW.out)
+
+plot(ClS.out, ClW.out, main = 'Cl Salt vs. Water QTL plot', col= c('red','blue'), chr = c(1,2,7,8,10,14))
+plot(KS.out, KW.out, main = 'K Salt vs. Water QTL plot', col= c('red','blue'), chr = c(1,2,4,5,6,9))
+plot(NaS.out,NaW.out, main = 'Na Salt vs. Water QTL plot', col= c('red','blue'), chr = c(2,3,6,11,16))
+plot(SBS.out,SBW.out, main = 'Skin:Body Salt vs. Water QTL plot', col= c('red','blue'), chr = c(4,5,7,8,10,14,17))
+
+```
+
+**The following permutation test yielded very high threshold values for maximum LOD scores**
+
+```{r LOD Graphs, message=FALSE, warning=FALSE}
+
+ClW.perm <- scanone(pheno.col = ('Cl_Water'), df, method = 'hk', n.perm = 1000)
+ClS.perm <- scanone(pheno.col = ('Cl_Salt'), df, method = 'hk', n.perm = 1000)
+KS.perm <- scanone(pheno.col = ('K_Salt'), df, method = 'hk', n.perm = 1000)
+KW.perm <- scanone(pheno.col = ('K_Water'), df, method = 'hk', n.perm = 1000)
+NaS.perm <- scanone(pheno.col = ('Na_Salt'), df, method = 'hk', n.perm = 1000)
+NaW.perm <- scanone(pheno.col = ('Na_Water'), df, method = 'hk', n.perm = 1000)
+SBS.perm <- scanone(pheno.col = ('Cl_Water'), df, method = 'hk', n.perm = 1000)
+SBW.perm <- scanone(pheno.col = ('Cl_Water'), df, method = 'hk', n.perm = 1000)
+plot(ClS.perm, main = 'Cl(Salt)' )
+plot(ClW.perm, main = 'Cl(Water)')
+plot(KS.perm, main = 'K(Salt)' )
+plot(KW.perm, main = 'K(Water')
+plot(NaS.perm, main = 'Na(Salt)')
+plot(NaW.perm, main = 'Na(Water)')
+plot(SBS.perm, main = 'Skin:Body(Salt)')
+plot(SBW.perm, main = 'Skin:Body(Water)')
+
+
+```
+
+**85% threshhold was chosen arbitrarily in order to have some data to run bayes credible intervals on, there were no LOD peaks above threshold for 67% or 5%**
+
+```{r Permutation Test, message=FALSE, warning=FALSE}
+#85% threshhold was chosen arbitrarily in order to have some data to run bayes credible intervals on, there were no LOD peaks above threshold for 67% or 5% QTLs 
+summary(ClS.out, perms=ClS.perm, alpha= 0.85, pvalues=TRUE)
+summary(ClW.out, perms=ClW.perm, alpha=0.85, pvalues=TRUE)
+summary(KS.out, perms=KS.perm, alpha=0.85, pvalues=TRUE)
+summary(KW.out, perms=KW.perm, alpha=0.85, pvalues=TRUE)
+summary(NaS.out, perms=NaS.perm, alpha=0.85, pvalues=TRUE)
+summary(NaW.out, perms=NaW.perm, alpha=0.85, pvalues=TRUE)
+summary(SBS.out, perms=SBW.perm, alpha=0.85, pvalues=TRUE)
+
+
+```
+
+```{r Bayes credible interval, message=FALSE, warning=FALSE}
+# 95% Bayes credible interval
+bayesint(ClW.out, chr = 1)
+bayesint(KS.out, chr = 14)
+bayesint(NaS.out, chr = 3)
+```
+
+```{r QTL effects, message=FALSE, warning=FALSE}
+#Possible QTL in Cl (water)
+mar.ClW<- find.marker(df,chr= 1, pos= 45.42)
+plotPXG(df,marker= mar.ClW)
+
+#Possible QTL in K (Salt)
+mar.KS<- find.marker(df,chr= 14, pos= 91.22)
+plotPXG(df,marker= mar.KS)
+
+#Possible QTL in K (Salt)
+mar.NaS<- find.marker(df,chr= 3, pos= 96.19)
+plotPXG(df,marker= mar.KS)
+
+
+```

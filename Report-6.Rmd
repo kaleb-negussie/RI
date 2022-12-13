@@ -1,0 +1,458 @@
+---
+title: "Possible QTL identification and bayesian significant intervals continued"
+subtitle: 'Report 6'
+author: 'Kaleb Negussie' 
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: false
+    fig_caption: yes
+    fig_retiSB: 1 
+    code_folding: show
+date: '2022-07-18'
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r load-packages, include=FALSE}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+library(ggthemes)
+library(knitr)
+library(qtl)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+df <- read.cross("csvr", ".", "gen.csv", na.strings = 'NA')
+```
+
+```{r}
+ClS.out<-scanone(df, pheno.col = "Cl_Salt",method="mr")
+KS.out<-scanone(df, pheno.col = "K_Salt",model = 'normal',method="mr")
+NaS.out<-scanone(df, pheno.col = "Na_Salt", method="mr")
+SBS.out<-scanone(df, pheno.col = "SB_Salt",model = 'normal', method="mr")
+KW.out<-scanone(df, pheno.col = "K_Water",model = 'normal', method="mr")
+ClW.out<-scanone(df,pheno.col = "Cl_Water",model = 'normal', method="mr")
+NaW.out<-scanone(df,pheno.col = "Na_Water",model = 'normal', method="mr")
+SBW.out <- scanone(df,pheno.col = "SB_Water",model = 'normal', method="mr")
+```
+
+```{r Permutation Test, message=FALSE, warning=FALSE, eval=FALSE}
+
+
+set.seed(287349723)
+ClW.perm <- scanone(pheno.col = ('Cl_Water'), df, method = 'mr', n.perm = 1000)
+ClS.perm <- scanone(pheno.col = ('Cl_Salt'), df, method = 'mr', n.perm = 1000)
+KS.perm <- scanone(pheno.col = ('K_Salt'), df, method = 'mr', n.perm = 1000)
+KW.perm <- scanone(pheno.col = ('K_Water'), df, method = 'mr', n.perm = 1000)
+NaS.perm <- scanone(pheno.col = ('Na_Salt'), df, method = 'mr', n.perm = 1000)
+NaW.perm <- scanone(pheno.col = ('Na_Water'), df, method = 'mr', n.perm = 1000)
+SBS.perm <- scanone(pheno.col = ('Cl_Water'), df, method = 'mr', n.perm = 1000)
+SBW.perm <- scanone(pheno.col = ('Cl_Water'), df, method = 'mr', n.perm = 1000)
+
+
+saveRDS(ClW.perm, file= "/Users/kalebnegussie/Desktop/RI data/ClW_perm")
+saveRDS(ClS.perm, file= "/Users/kalebnegussie/Desktop/RI data/ClS_perm")
+saveRDS(KS.perm, file= "/Users/kalebnegussie/Desktop/RI data/KS_perm")
+saveRDS(KW.perm, file= "/Users/kalebnegussie/Desktop/RI data/KW_perm")
+saveRDS(NaS.perm, file= "/Users/kalebnegussie/Desktop/RI data/NaS_perm")
+saveRDS(NaW.perm, file= "/Users/kalebnegussie/Desktop/RI data/NaW_perm")
+saveRDS(SBS.perm, file= "/Users/kalebnegussie/Desktop/RI data/SBS_perm")
+saveRDS(SBW.perm, file= "/Users/kalebnegussie/Desktop/RI data/SBW_perm")
+
+```
+
+# Chlorine(Cl)
+
+## Water Diet
+
+### Permutation Test
+
+```{r}
+ClW.perm <- readRDS("/Users/kalebnegussie/Desktop/RI data/ClW_perm")
+threshClW <- summary(ClW.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(ClW.perm, main = 'Cl(Water)')
+abline(v = threshClW[3], lty= "dotted",lwd = 1, col="red")
+```
+
+### Mainscan
+
+*Blue line represents 67% suggestive threshold*
+
+```{r}
+plot(ClW.out, main = 'Cl(Water)', bandcol="gray85", alternate.chrid= TRUE)
+abline(h = threshClW[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshClW[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshClW[3], lty= "dotted",lwd = 1, col="green")
+```
+
+### Phenotype Against Genotype
+
+*2 possible QTLs reached the suggestive threshold*
+
+```{r}
+set.seed(234423)
+summary(ClW.out, perms=ClW.perm, alpha= 0.67, pvalues=TRUE)
+
+plotPXG(df,marker= 'rat108_035_d11.q1ca_316',ylab = "", main = "Clorine-Water Possible QTL(rat108_035_d11.q1ca_316)" )
+
+plotPXG(df,marker= 'J700466',ylab = "", main = "Clorine-Water Possible QTL(J700466)" )
+
+
+
+```
+
+### Confidence Values
+
+```{r}
+ClW.bayes <- bayesint(ClW.out, chr = 1)
+ClW.bayes2 <- bayesint(ClW.out, chr = 14)
+
+
+
+ClW.CV <- matrix(c(1, 0.31, round(ClW.bayes[2,3],digits = 2),
+                   round(ClW.bayes[2,2],2), round(ClW.bayes[1,2],2), round(ClW.bayes[3,2],2),
+                   14, 0.41, round(ClW.bayes2[2,3],digits = 2),
+                   round(ClW.bayes2[2,2],2), round(ClW.bayes2[1,2],2), round(ClW.bayes2[3,2],2)),
+                 ncol=6, byrow=TRUE)
+colnames(ClW.CV) <- c('chr','P-value','LOD','position(CM)', 'bayesint(lower)','bayesint(upper)')
+rownames(ClW.CV) <- c('rat108_035...', 'J700466')
+ClW.CV
+```
+
+## Salt Diet
+
+### Permutation Test
+
+```{r}
+ClS.perm <- readRDS("/Users/kalebnegussie/Desktop/RI data/ClS_perm")
+threshClS <- summary(ClS.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(ClS.perm, main = 'Cl(Salt)')
+abline(v = threshClS[3], lty= "dotted",lwd = 1, col="red")
+```
+
+### Main-scan
+
+*Blue line represents 67% suggestive threshold*
+
+```{r}
+plot(ClS.out, main = 'Cl(Salt)', bandcol="gray85", alternate.chrid= TRUE)
+abline(h = threshClS[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshClS[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshClS[3], lty= "dotted",lwd = 1, col="green")
+```
+
+### Phenotype Against Genotype
+
+*One possible QTL reached the suggestive threshold*
+
+```{r}
+set.seed(234423)
+summary(ClS.out, perms=ClS.perm, alpha= 0.67, pvalues=TRUE)
+plotPXG(df,marker= 'J571386',ylab = "", main = "Clorine-Salt Possible QTL(J571386)" )
+```
+
+### Confidence Values
+
+```{r}
+ClS.bayes <- bayesint(ClS.out, chr = 3)
+ClS.CV <- matrix(c(3, 0.60, round(ClS.bayes[2,3],digits = 2),
+                   round(ClS.bayes[2,2],2), round(ClS.bayes[1,2],2), round(ClS.bayes[3,2],2)),
+                 ncol=6, byrow=TRUE)
+colnames(ClS.CV) <- c('chr','P-value','LOD','position(CM)', 'bayesint(lower)','bayesint(upper)')
+rownames(ClS.CV) <- c('J571386')
+ClS.CV
+```
+
+## Diet Comparison
+
+\*Salt diet in red
+
+```{r}
+plot(ClS.out, ClW.out, main = 'Cl Salt vs. Water QTL plot',
+     col= c('red','blue'), chr = c(1,2,7,8,10,14), bandcol="gray85" )
+
+```
+
+# Potassium(K)
+
+## Water Diet
+
+### Permutation Test
+
+```{r}
+KW.perm <- readRDS("/Users/kalebnegussie/Desktop/RI data/KW_perm")
+threshKW <- summary(KW.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(KW.perm, main = 'K(Water)')
+abline(v = threshKW[3], lty= "dotted",lwd = 1, col="red")
+```
+
+### Main-scan
+
+*Blue line represents 67% suggestive threshold*
+
+```{r}
+plot(KW.out, main = 'K(Water)', bandcol="gray85", alternate.chrid= TRUE)
+abline(h = threshKW[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshKW[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshKW[3], lty= "dotted",lwd = 1, col="green")
+```
+
+### Phenotype Against Genotype
+
+*There were no possible QTLs that reached the suggestive threshold*
+
+```{r}
+set.seed(234423)
+summary(KW.out, perms=KW.perm, alpha= 0.67, pvalues=TRUE)
+```
+
+## Salt Diet
+
+### Permutation Test
+
+```{r}
+KS.perm <- readRDS("/Users/kalebnegussie/Desktop/RI data/KS_perm")
+threshKS <- summary(KS.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(KS.perm, main = 'K(Salt)')
+abline(v = threshKS[3], lty= "dotted",lwd = 1, col="red")
+```
+
+### Main-scan
+
+*Blue line represents 67% suggestive threshold*
+
+```{r}
+plot(KS.out, main = 'K(Salt)', bandcol="gray85", alternate.chrid= TRUE)
+abline(h = threshKS[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshKS[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshKS[3], lty= "dotted",lwd = 1, col="green")
+```
+
+### Phenotype Against Genotype
+
+*There were no possible QTLs that reached the suggestive threshold*
+
+```{r}
+set.seed(234423)
+summary(KS.out, perms=KS.perm, alpha= 0.67, pvalues=TRUE)
+```
+
+## Diet Comparison
+
+*Salt diet in red*
+
+```{r}
+plot(KS.out, KW.out, main = 'K Salt vs. Water QTL plot', 
+     col= c('red','blue'), chr = c(1,2,4,5,6,9), bandcol="gray85")
+
+```
+
+# Sodium(Na)
+
+## Water Diet
+
+### Permutation Test
+
+```{r}
+NaW.perm <- readRDS("/Users/kalebnegussie/Desktop/RI data/NaW_perm")
+threshNaW <- summary(NaW.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(NaW.perm, main = 'Na(Water)')
+abline(v = threshNaW[3], lty= "dotted",lwd = 1, col="red")
+```
+
+### Main-scan
+
+*Blue line represents 67% suggestive threshold*
+
+```{r}
+plot(NaW.out, main = 'Na(Water)', bandcol="gray85", alterNate.chrid= TRUE)
+abline(h = threshNaW[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshNaW[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshNaW[3], lty= "dotted",lwd = 1, col="green")
+```
+
+### Phenotype Against Genotype
+
+*3 possible QTLs reached the suggestive threshold*
+
+```{r}
+summary(NaW.out, perms=NaW.perm, alpha= 0.67, pvalues=TRUE)
+plotPXG(df,marker= 'rdahl-10d19_fp2_b1_135',ylab = "", 
+        main = "Sodium-Water Possible QTL(rdahl-10d19_fp2_b1_135)" )
+
+plotPXG(df,marker= 'rat104_080_h22.q1ca_403',ylab = "", 
+        main = "Sodium-Water Possible QTL(rat104_080_h22.q1ca_403)" )
+
+plotPXG(df,marker= 'rat109_060_e09.q1ca_157',ylab = "", 
+        main = "Sodium-Water Possible QTL(rat109_060_e09.q1ca_157)" )
+
+
+```
+
+### Confidence Values
+
+```{r}
+NaW.bayes <- bayesint(NaW.out, chr = 2)
+NaW.bayes2 <- bayesint(NaW.out, chr = 6)
+NaW.bayes3 <- bayesint(NaW.out, chr = 17)
+
+NaW.CV <- matrix(c(2, 0.35, round(NaW.bayes[2,3],digits = 2),
+                   round(NaW.bayes[2,2],2), round(NaW.bayes[1,2],2), round(NaW.bayes[3,2],2),
+                   6, 0.49, round(NaW.bayes2[2,3],digits = 2),
+                   round(NaW.bayes2[2,2],2), round(NaW.bayes2[1,2],2), round(NaW.bayes2[3,2],2),
+                   17, 0.42, round(NaW.bayes3[2,3],digits = 2),
+                   round(NaW.bayes3[2,2],2), round(NaW.bayes3[1,2],2), round(NaW.bayes3[3,2],2)),
+                 ncol=6, byrow=TRUE)
+colnames(NaW.CV) <- c('chr','P-value','LOD','position(CM)', 'bayesint(lower)','bayesint(upper)')
+rownames(NaW.CV) <- c('rdahl-10...', 'gko-98h8...', 'rat109...')
+NaW.CV
+```
+
+## Salt Diet
+
+### Permutation Test
+
+```{r}
+NaS.perm <- readRDS("/Users/kalebnegussie/Desktop/RI data/NaS_perm")
+threshNaS <- summary(NaS.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(NaS.perm, main = 'Na(Salt)')
+abline(v = threshNaS[3], lty= "dotted",lwd = 1, col="red")
+```
+
+### Main-scan
+
+*Blue line represents 67% suggestive threshold*
+
+```{r}
+plot(NaS.out, main = 'Na(Salt)', bandcol="gray85", alterNate.chrid= TRUE)
+abline(h = threshNaS[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshNaS[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshNaS[3], lty= "dotted",lwd = 1, col="green")
+```
+
+### Phenotype Against Genotype
+
+*One possible QTL reached the suggestive threshold*
+
+```{r}
+set.seed(234423)
+summary(NaS.out, perms=NaS.perm, alpha= 0.67, pvalues=TRUE)
+plotPXG(df,marker= 'rat101_028_i20.p1ca_250',ylab = "", main = "Sodium-Salt Possible QTL(rat101_028_i20.p1ca_250)" )
+```
+
+### Confidence Values
+
+```{r}
+NaS.bayes <- bayesint(NaS.out, chr = 16)
+NaS.CV <- matrix(c(16, 0.60, round(NaS.bayes[2,3],digits = 2),
+                   round(NaW.bayes[2,2],2), round(NaS.bayes[1,2],2), round(NaS.bayes[3,2],2)),
+                 ncol=6, byrow=TRUE)
+colnames(NaS.CV) <- c('chr','P-value','LOD','position(CM)', 'bayesint(lower)','bayesint(upper)')
+rownames(NaS.CV) <- c('rat102_02...')
+NaS.CV
+```
+
+## Diet Comparison
+
+\*Salt diet in red
+
+```{r}
+plot(NaS.out,NaW.out, main = 'Na Salt vs. Water QTL plot',
+     col= c('red','blue'), chr = c(2,3,6,11,16),bandcol="gray85")
+
+
+```
+
+# Skin:Body Ratio
+
+## Water Diet
+
+### Permutation Test
+
+```{r}
+SBW.perm <- readRDS("/Users/kalebnegussie/Desktop/RI data/SBW_perm")
+threshSBW <- summary(SBW.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(SBW.perm, main = 'SB(Water)')
+abline(v = threshSBW[3], lty= "dotted",lwd = 1, col="red")
+```
+
+### Main-scan
+
+*Blue line represents 67% suggestive threshold*
+
+```{r}
+plot(SBW.out, main = 'SB(Water)', bandcol="gray85", alternate.chrid= TRUE)
+abline(h = threshSBW[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshSBW[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshSBW[3], lty= "dotted",lwd = 1, col="green")
+```
+
+### Phenotype Against Genotype
+
+*One possible QTL reached the suggestive threshold*
+
+```{r}
+set.seed(234423)
+summary(SBW.out, perms=SBW.perm, alpha= 0.67, pvalues=TRUE)
+plotPXG(df,marker= 'rat102_024_l24.q1ca_481',ylab = "", 
+        main = "Skin:Body-Water Possible QTL(rat102_024_l24.q1ca_481)" )
+
+```
+
+### Confidence Values
+
+```{r}
+SBW.bayes <- bayesint(SBW.out, chr = 16)
+SBW.CV <- matrix(c(16, 0.57, round(SBW.bayes[2,3],digits = 2),
+                   round(SBW.bayes[2,2],2), round(SBW.bayes[1,2],2), round(SBW.bayes[3,2],2)),
+                 ncol=6, byrow=TRUE)
+colnames(SBW.CV) <- c('chr','P-value','LOD','position(CM)', 'bayesint(lower)','bayesint(upper)')
+rownames(SBW.CV) <- c('rat102_02...')
+SBW.CV
+```
+
+## Salt Diet
+
+### Permutation Test
+
+```{r}
+SBS.perm <- readRDS("/Users/kalebnegussie/Desktop/RI data/SBS_perm")
+threshSBS <- summary(SBS.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(SBS.perm, main = 'SB(Salt)')
+abline(v = threshSBS[3], lty= "dotted",lwd = 1, col="red")
+```
+
+### Main-scan
+
+*Blue line represents 67% suggestive threshold*
+
+```{r}
+plot(SBS.out, main = 'SB(Salt)', bandcol="gray85", alternate.chrid= TRUE)
+abline(h = threshSBS[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshSBS[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshSBS[3], lty= "dotted",lwd = 1, col="green")
+```
+
+### Phenotype Against Genotype
+
+*No possible QTL reached the suggestive threshold*
+
+```{r}
+set.seed(234423)
+summary(SBS.out, perms=SBS.perm, alpha= 0.67, pvalues=TRUE)
+```
+
+## Diet Comparison
+
+*Salt diet in red*
+
+```{r}
+plot(SBS.out,SBW.out, main = 'Skin:Body Salt vs. Water QTL plot', 
+     col= c('red','blue'), chr = c(4,5,7,8,10,14,17))
+
+```

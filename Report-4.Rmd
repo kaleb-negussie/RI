@@ -1,0 +1,126 @@
+---
+title: "Possible QTL identification and bayesian significant intervals "
+subtitle: 'Report 4'
+author: 'Kaleb Negussie' 
+output: 
+  html_document:
+      code_folding: show
+date: '2022-06-30'
+---
+
+```{r load-packages, include=FALSE}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+library(ggthemes)
+library(knitr)
+library(qtl)
+```
+
+```{r Skin:Body Ratio Log Transformations, include=FALSE}
+dfo <- read.csv('/Users/kalebnegussie/Desktop/RI data/Full_skin_data.csv')
+#build skin body ratio df 
+dfo <- dfo %>% mutate(sb.ratio = (Body.Weight..g. / Skin.Dry.Weight..g. ))
+sb <- data.frame(Strain = dfo$Strain, Diet= dfo$Diet, sb.ratio = dfo$sb.ratio)
+sb.water<- filter(sb, Diet == 'Voda')
+sb.salt<- filter(sb, Diet == 'Sůl')
+#Pre transformation histograms 
+hist(sb.water$sb.ratio, main = 'Skin to Body ratios (Salt)', xlab = 'SB ratios') 
+
+hist(sb.salt$sb.ratio, main = 'Log Base 10 of Skin to Body ratios (Water)',
+     xlab = 'Log SB ratios') 
+
+#Log base 10 transformations of SB ratios  
+hist(log(sb.salt$sb.ratio), main = 'Log Base 10 of Skin to Body ratios (Salt)',
+     xlab = 'Log SB ratios')
+
+hist(log(sb.water$sb.ratio), main = 'Log Base 10 of Skin to Body ratios (Water)', 
+     xlab = 'Log SB ratios')
+
+```
+
+```{r include=FALSE}
+df <- read.cross("csvr", ".", "gen.csv", na.strings = 'NA')
+df <- calc.genoprob(df, step=1, error.prob=0.01)
+#build scan 1s of each phenotyoe 
+phenames(df)
+df <- sim.geno(df, step=1, n.draws=64)
+ClS.out<-scanone(df, pheno.col = "Cl_Salt",model = 'normal',method="imp")
+
+KS.out<-scanone(df, pheno.col = "K_Salt",model = 'normal',method="imp")
+
+NaS.out<-scanone(df, pheno.col = "Na_Salt",model = 'normal', method="imp")
+
+SBS.out<-scanone(df, pheno.col = "SB_Salt",model = 'normal', method="imp")
+
+KW.out<-scanone(df, pheno.col = "K_Water",model = 'normal', method="imp")
+
+ClW.out<-scanone(df,pheno.col = "Cl_Water",model = 'normal', method="imp")
+
+NaW.out<-scanone(df,pheno.col = "Na_Water",model = 'normal', method="imp")
+
+SBW.out <- scanone(df,pheno.col = "SB_Water",model = 'normal', method="imp")
+
+plot(ClS.out)
+plot(ClW.out)
+plot(KS.out)
+plot(KW.out)
+plot(NaS.out)
+plot(NaW.out)
+plot(SBS.out)
+plot(SBW.out)
+
+plot(ClS.out, ClW.out, col= c('red','blue'), chr = c(1,2,7,8,10,14))
+plot(KS.out, KW.out, col= c('red','blue'), chr = c(1,2,4,5,6,9))
+plot(NaS.out,NaW.out, col= c('red','blue'), chr = c(2,3,6,11,16))
+plot(SBS.out,SBW.out, col= c('red','blue'), chr = c(4,5,7,8,10,14,17))
+
+```
+
+```{r LOD Graphs, include=FALSE}
+df2 <- sim.geno(df, step=2, n.draws=1000, error.prob=0.01)
+KW.imp<-scanone(df2, pheno.col = 'K_Water', method="imp")
+
+KW.em<-scanone(df, pheno.col = 'K_Water', method="em")
+
+plot(KW.em)
+plot(KW.imp)
+
+ClS.perm<-scanone(df, pheno.col = "Cl_Salt",model = 'normal',method="hk",
+                n.perm = 10)
+NaS.perm<-scanone(df, pheno.col = "Na_Salt",model = 'normal', method="hk",
+                  n.perm = 10)
+SBS.perm<-scanone(df, pheno.col = "SB_Salt",model = 'normal', method="hk",
+                  n.perm = 10)
+KW.perm<-scanone(df, pheno.col = "K_Water",model = 'normal', method="hk",
+                  n.perm = 10)
+ClW.perm<-scanone(df,pheno.col = "Cl_Water",model = 'normal', method="hk",
+                   n.perm = 10)
+NaW.perm<-scanone(df,pheno.col = "Na_Water",model = 'normal', method="hk",
+                   n.perm = 10
+plot(SBW.perm)
+```
+
+```{r Permutation Test, include=FALSE}
+KS.perm<-scanone(df, pheno.col = 'K_Salt',model = 'normal', method="hk",
+                n.perm = 10)
+ClS.perm<-scanone(df, pheno.col = "Cl_Salt",model = 'normal',method="hk",
+                n.perm = 10)
+NaS.perm<-scanone(df, pheno.col = "Na_Salt",model = 'normal', method="hk",
+                  n.perm = 10)
+SBS.perm<-scanone(df, pheno.col = "SB_Salt",model = 'normal', method="hk",
+                  n.perm = 10)
+KW.perm<-scanone(df2, pheno.col = "K_Water", method="hk",
+                  n.perm = 10)
+ClW.perm<-scanone(df,pheno.col = "Cl_Water",model = 'normal', method="hk",
+                   n.perm = 10)
+NaW.perm<-scanone(df,pheno.col = "Na_Water",model = 'normal', method="hk",
+                   n.perm = 10)
+SBW.perm<-scanone(df,pheno.col = "SB_Water",model = 'normal', method="hk",
+                   n.perm = 1000)
+plot(KW.perm)
+summary(KW.imp, perms = KW.perm, alpha = 0.05, pvalues = TRUE)
+scanon
+```
+

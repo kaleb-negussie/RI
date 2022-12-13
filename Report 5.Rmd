@@ -1,0 +1,178 @@
+---
+title: "Possible QTL identification and bayesian significant intervals continued"
+subtitle: 'Report 5'
+author: 'Kaleb Negussie' 
+output: 
+  html_document:
+      code_folding: show
+date: '2022-07-9'
+---
+```{r load-packages, include=FALSE}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+library(ggthemes)
+library(knitr)
+library(qtl)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+df <- read.cross("csvr", ".", "gen.csv", na.strings = 'NA')
+#build scan 1s of each phenotyoe 
+ClS.out<-scanone(df, pheno.col = "Cl_Salt",model = 'normal',method="mr")
+
+KS.out<-scanone(df, pheno.col = "K_Salt",model = 'normal',method="mr")
+
+NaS.out<-scanone(df, pheno.col = "Na_Salt",model = 'normal', method="mr")
+
+SBS.out<-scanone(df, pheno.col = "SB_Salt",model = 'normal', method="mr")
+
+KW.out<-scanone(df, pheno.col = "K_Water",model = 'normal', method="mr")
+
+ClW.out<-scanone(df,pheno.col = "Cl_Water",model = 'normal', method="mr")
+
+NaW.out<-scanone(df,pheno.col = "Na_Water",model = 'normal', method="mr")
+
+SBW.out <- scanone(df,pheno.col = "SB_Water",model = 'normal', method="mr")
+
+
+```
+
+```{r LOD Graphs, message=FALSE, warning=FALSE}
+
+ClW.perm <- scanone(pheno.col = ('Cl_Water'), df, method = 'mr', n.perm = 1000)
+ClS.perm <- scanone(pheno.col = ('Cl_Salt'), df, method = 'mr', n.perm = 1000)
+KS.perm <- scanone(pheno.col = ('K_Salt'), df, method = 'mr', n.perm = 1000)
+KW.perm <- scanone(pheno.col = ('K_Water'), df, method = 'mr', n.perm = 1000)
+NaS.perm <- scanone(pheno.col = ('Na_Salt'), df, method = 'mr', n.perm = 1000)
+NaW.perm <- scanone(pheno.col = ('Na_Water'), df, method = 'mr', n.perm = 1000)
+SBS.perm <- scanone(pheno.col = ('Cl_Water'), df, method = 'mr', n.perm = 1000)
+SBW.perm <- scanone(pheno.col = ('Cl_Water'), df, method = 'mr', n.perm = 1000)
+
+```
+```{r}
+threshClW <- summary(ClW.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(ClW.out, main = 'Cl(Water)')
+abline(h = threshClW[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshClW[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshClW[3], lty= "dotted",lwd = 1, col="green")
+
+threshClS <- summary(ClS.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(ClS.out, main = 'Cl(Salt)')
+abline(h = threshClS[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshClS[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshClS[3], lty= "dotted",lwd = 1, col="green")
+
+threshKS <- summary(KS.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(KS.out, main = 'K(Salt)')
+abline(h = threshKS[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshKS[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshKS[3], lty= "dotted",lwd = 1, col="green")
+
+threshKW <- summary(KS.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(KW.out, main = 'K(Water)')
+abline(h = threshKW[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshKW[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshKW[3], lty= "dotted",lwd = 1, col="green")
+
+threshNaS <- summary(NaS.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(NaS.out,  main = 'Na(Salt)')
+abline(h = threshNaS[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshNaS[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshNaS[3], lty= "dotted",lwd = 1, col="green")
+
+threshNaW <- summary(NaW.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(NaW.out, main = 'Na(Water)')
+abline(h = threshNaW[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshNaW[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshNaW[3], lty= "dotted",lwd = 1, col="green")
+
+threshSBS <- summary(SBS.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(SBS.out, main = 'Skin:Body(Salt)')
+abline(h = threshSBS[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshSBS[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshSBS[3], lty= "dotted",lwd = 1, col="green")
+
+threshSBW <- summary(SBW.perm, c(alpha = 0.67, alpha = 0.10, alpha = 0.05))
+plot(SBW.out, main = 'Skin:Body(Water)')
+abline(h = threshSBW[1], lty= "dotted",lwd = 1, col="blue")
+abline(h = threshSBW[2], lty= "dotted",lwd = 1, col="red")
+abline(h = threshSBW[3], lty= "dotted",lwd = 1, col="green")
+
+``` 
+
+```{r}
+plot(ClW.perm, main = 'Cl(Water)')
+abline(v = threshClW[3], lty= "dotted",lwd = 1, col="red")
+plot(ClS.perm, main = 'Cl(Salt)' )
+abline(v = threshClS[3], lty= "dotted",lwd = 1, col="red")
+plot(KS.perm, main = 'K(Salt)' )
+abline(v = threshKS[3], lty= "dotted",lwd = 1, col="red")
+plot(KW.perm, main = 'K(Water')
+abline(v = threshKW[3], lty= "dotted",lwd = 1, col="red")
+plot(NaS.perm, main = 'Na(Salt)')
+abline(v = threshNaS[3], lty= "dotted",lwd = 1, col="red")
+plot(NaW.perm, main = 'Na(Water)')
+abline(v = threshNaW[3], lty= "dotted",lwd = 1, col="red")
+plot(SBS.perm, main = 'Skin:Body(Salt)')
+abline(v = threshSBS[3], lty= "dotted",lwd = 1, col="red")
+plot(SBW.perm, main = 'Skin:Body(Water)')
+abline(v = threshSBW[3], lty= "dotted",lwd = 1, col="red")
+
+```
+
+```{r}
+plot(ClS.out, ClW.out, main = 'Cl Salt vs. Water QTL plot', col= c('red','blue'), chr = c(1,2,7,8,10,14))
+plot(KS.out, KW.out, main = 'K Salt vs. Water QTL plot', col= c('red','blue'), chr = c(1,2,4,5,6,9))
+plot(NaS.out,NaW.out, main = 'Na Salt vs. Water QTL plot', col= c('red','blue'), chr = c(2,3,6,11,16))
+plot(SBS.out,SBW.out, main = 'Skin:Body Salt vs. Water QTL plot', col= c('red','blue'), chr = c(4,5,7,8,10,14,17))
+
+```
+
+```{r Permutation Test, message=FALSE, warning=FALSE}
+#85% threshhold was chosen arbitrarily in order to have some data to run bayes credible intervals on, there were no LOD peaks above threshold for 67% or 5% QTLs 
+summary(ClS.out, perms=ClS.perm, alpha= 0.67, pvalues=TRUE)
+summary(ClW.out, perms=ClW.perm, alpha=0.67, pvalues=TRUE)
+summary(KS.out, perms=KS.perm, alpha=0.67, pvalues=TRUE)
+summary(KW.out, perms=KW.perm, alpha=0.67, pvalues=TRUE)
+summary(NaS.out, perms=NaS.perm, alpha=0.67, pvalues=TRUE)
+summary(NaW.out, perms=NaW.perm, alpha=0.67, pvalues=TRUE)
+summary(SBS.out, perms=SBW.perm, alpha=0.67, pvalues=TRUE)
+summary(SBW.out, perms=SBW.perm, alpha=0.67, pvalues=TRUE)
+
+
+```
+
+```{r Bayes credible interval, message=FALSE, warning=FALSE}
+# 95% Bayes credible interval
+bayesint(ClS.out, chr = 3)
+bayesint(ClW.out, chr = 1)
+bayesint(ClW.out, chr = 14)
+bayesint(KS.out, chr = 4)
+bayesint(NaS.out, chr = 16)
+bayesint(NaW.out, chr = 2)
+bayesint(NaW.out, chr = 6)
+jole<-bayesint(NaW.out, chr = 17)
+jole
+jole[1,0]
+jole[1,2]
+
+```
+
+```{r QTL effects, message=FALSE, warning=FALSE}
+#Possible QTL in Cl (water)
+mar.ClW<- find.marker(df,chr= 1, pos= 45.44)
+plotPXG(df,marker= mar.ClW)
+
+#Possible QTL in K (Salt)
+mar.KS<- find.marker(df,chr= 14, pos= 91.22)
+plotPXG(df,marker= mar.KS)
+
+#Possible QTL in K (Salt)
+mar.NaS<- find.marker(df,chr= 3, pos= 96.19)
+plotPXG(df,marker= mar.KS)
+
+
+```
