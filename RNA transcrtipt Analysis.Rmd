@@ -1,0 +1,184 @@
+---
+title: "RNA-seq data analysis"
+subtitle: 'PCA, hierarchical clustering, and dispersion analysis'
+author: 'Kaleb Negussie' 
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: false
+    fig_caption: yes
+    fig_retiSB: 1 
+    code_folding: show
+date: '2022-11-19'
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+#Import count table and replaces first row to rownames
+library('DESeq2')
+count <- read.csv("/Users/kalebnegussie/Desktop/RI data/count_table")
+count[,1] <- NULL
+rownames(count) <- count[,1]
+count[,1] <- NULL
+#Creates a filtered data frame where only rna transcripts with more than 50 
+#samples across all mice was detected
+countfil <- count[rowSums(count[])>50,]
+```
+
+```{r setup, message=FALSE, warning=FALSE}
+#Builds a treatment table
+treatment_table<- matrix(,length(colnames(countfil)),)
+
+Salt <- ".1"
+
+TT <- list()
+for (i in colnames(countfil)) {
+  for (j in treatment_table[1,]){
+
+  if (grepl(Salt, i, fixed = TRUE)){
+  j <- "Salt" }
+  else {j <- "Water"}
+  }
+    TT<- c(TT,j)
+  }
+  
+JJ <- list()
+for (i in colnames(countfil)) {
+  for (j in treatment_table[1,]){
+    i = substr(i,1,nchar(i)-2)
+    
+    JJ <- c(JJ,i)
+
+}}
+
+
+treatment_table <- matrix(TT)
+treatment_table <- as.matrix.data.frame(treatment_table)
+
+rownames(treatment_table) <- colnames(countfil)
+colnames(treatment_table) <- c('Diet')
+```
+
+```{r setup, message=FALSE, warning=FALSE}
+#Creates unfiltered deSeq object 
+#(deSeq automatically removes samples with 0 counts across all columns)
+
+dds_unfil <- DESeqDataSetFromMatrix(countData = round(count),
+                             colData = treatment_table,
+                             design = ~ Diet)
+dds_unfil <- DESeq(dds_unfil)
+
+#Creates filtered dds object
+dds_fil <- DESeqDataSetFromMatrix(countData = round(countfil),
+                             colData = treatment_table,
+                             design = ~ Diet)
+dds_fil <- DESeq(dds_fil)
+
+fil_norm <- vst(dds_fil)
+unfil_norm <- vst(dds_unfil)
+```
+
+# Dispersion Plot Filtered vs. Unfiltered 
+
+There are few values with very high dispersion which are not shrunk
+towards The fitted curve. However there were a fair bit of values with
+very low dispersion values which were fitted strongly.
+
+```{r message=FALSE, warning=FALSE}
+plotDispEsts(dds_fil)
+plotDispEsts(dds_unfil)
+```
+
+# Principle Component Analysis
+
+The original data did not have multiple batches analyzed for each
+strain, therefore batch corrections do not need to be made. No obvious
+grouping exists within the treatment group, grouping by strain would
+likely show clustering as observed in the dendrogram shown later.
+
+```{r message=FALSE, warning=FALSE}
+plotPCA(fil_norm)
+```
+
+# Dendrogram
+
+The dendrogram shows strong clustering by strain with the closest
+expression assosiations being those of individuals with different diets
+with the same strain.
+
+```{r message=FALSE, warning=FALSE}
+library(magrittr)
+library(RColorBrewer)
+rv <- rowVars(assay(dds_vst))
+o <- order(rv,decreasing=TRUE)
+dists <- dist(t(assay(dds_vst)[head(o,500),]))
+hc <- hclust(dists)
+plot(hc, labels=dds_vst$sample)
+
+plot(hclust(as.dist(1-cor(countfil, method="spearman"))))
+
+```
+
+#Determining Parameters for WGCNA 
+The WGCNA tutorial recommends choosing a power value with an associated r^2 
+value above 0.80 to minimize noise. However, all of the power values shown are 
+well below the 0.80 threshold. Moving forward a power value of 6 will fairly 
+arbitrarily be used.  
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(WGCNA)
+library(dplyr)
+library(ggplot2)
+fil_norm <- vst(dds_fil)
+normalized_counts <- assay(fil_norm)
+
+sft <- pickSoftThreshold(normalized_counts,
+  dataIsExpr = TRUE,
+  corFnc = cor,
+  networkType = "signed"
+)
+
+sft_df <- data.frame(sft$fitIndices) %>%
+  dplyr::mutate(model_fit = sign(slope) * SFT.R.sq)
+
+ggplot(sft_df, aes(x = Power, y = model_fit, label = Power)) +
+  geom_point() +
+  geom_text(nudge_y = 0.1) +
+  geom_hline(yintercept = 0.80, col = "red") +
+  ylim(c(min(sft_df$model_fit), 1.05)) +
+  xlab("Soft Threshold (power)") +
+  ylab("Scale Free Topology Model Fit, signed R^2") +
+  ggtitle("Scale independence") +
+  theme_classic()
+
+```
+#WGCNA 
+
+```{r message=FALSE, warning=FALSE}
+#Creating Block-wise Network 
+#bwnet <- blockwiseModules(normalized_counts,
+#  maxBlockSize = 5000, 
+#  TOMType = "signed", 
+#  power = 6, 
+#  numericLabels = TRUE, 
+#  randomSeed = 2259,
+#)
+
+#Saving block-wise modules desktop
+#readr::write_rds(bwnet,
+#  file = "/Users/kalebnegussie/Desktop/RI data/bwnet.RDS"
+#)
+
+lv<- readRDS("/Users/kalebnegussie/Desktop/RI data/bwnet.RDS")
+```
+
+#Count Outlier Detection
+
+
+The below plot shows Cook's distance over the rank of a test statistic.
+Cook's distance is the degree to which the fitted coeffiencts would
+change with the removal of a value.
+
