@@ -60,7 +60,10 @@ treatment_table <- as.matrix.data.frame(treatment_table)
 
 rownames(treatment_table) <- colnames(countfil)
 colnames(treatment_table) <- c('Diet')
+
+1 <- 23
 ```
+
 
 ```{r setup, message=FALSE, warning=FALSE}
 #Creates unfiltered deSeq object 
