@@ -181,4 +181,4 @@ lv<- readRDS("/Users/kalebnegussie/Desktop/RI data/bwnet.RDS")
 The below plot shows Cook's distance over the rank of a test statistic.
 Cook's distance is the degree to which the fitted coeffiencts would
 change with the removal of a value.
-
+ 
